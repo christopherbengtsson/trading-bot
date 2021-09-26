@@ -1,0 +1,7 @@
+numpy
+pandas
+ccxt
+requests
+ta
+schedule
+python-dotenv
