@@ -30,6 +30,12 @@ Trade with the MACD but make sure we stay in the same direction as the long term
 
 ## Dev
 
-`pip install -r requirements.txt`
+Create a .env file and add following props:
 
-`python3 anna.py`
+- API_KEY=your-api-key
+- API_SECRET=your-api-secret
+- RUN_ANNA=True
+
+run `pip install -r requirements.txt`
+
+run `python3 anna.py`
