@@ -7,7 +7,6 @@ import ccxt
 import os
 from dotenv import load_dotenv
 from termcolor import cprint
-import csv
 
 pd.set_option('display.max_rows', None)
 
