@@ -93,10 +93,13 @@ def run_bot():
     timeframe = '30m'
     limit = 300
 
-    data = fetch_data(symbol=symbol, timeframe=timeframe, limit=limit)
-    if len(data) > 0:
-        df = set_up_dataframe(data)
-        check_for_signals(df, symbol)
+    if os.environ.get('RUN_ANNA') == 'True':
+        data = fetch_data(symbol=symbol, timeframe=timeframe, limit=limit)
+        if len(data) > 0:
+            df = set_up_dataframe(data)
+            check_for_signals(df, symbol)
+    else:
+        print("Anna is resting...")
 
 
 schedule.every(1).minutes.do(run_bot)
