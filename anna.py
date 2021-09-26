@@ -6,6 +6,8 @@ import time
 import ccxt
 import os
 from dotenv import load_dotenv
+from termcolor import cprint
+import csv
 
 pd.set_option('display.max_rows', None)
 
@@ -16,12 +18,19 @@ exchange = ccxt.binance({
 })
 
 
+def get_account_balance(currency):
+    try:
+        return exchange.fetch_free_balance()[currency]
+    except:
+        cprint("No balance")
+
+
 def fetch_data(symbol, timeframe, limit):
-    print(f"Fetching new bars for {datetime.now().isoformat()}")
+    cprint(f"Fetching new bars for {datetime.now().isoformat()}")
     try:
         return exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
     except:
-        print("Failed fetching data")
+        cprint("Failed fetching data", 'red', attrs=['bold'])
         return []
 
 
@@ -43,7 +52,7 @@ def set_up_dataframe(data):
 
         return df
     except:
-        print("Failed setting up DateFrame")
+        cprint("Failed setting up DateFrame", 'red', attrs=['bold'])
         return pd.DataFrame()
 
 
@@ -70,22 +79,26 @@ def check_for_signals(df, symbol):
     if last_row_close > last_row_ema:
         if previous_row_macd_line < previous_row_macd_signal_line and last_row_macd_line > last_row_macd_signal_line and last_row_macd_line < 0:
             if not in_position:
-                print("*** Buy signal, making an order ***")
+                cprint("*** Buy signal, making an order ***",
+                       'green', attrs=['blink'])
                 order = exchange.create_market_buy_order(symbol, amount)
-                print(order)
+                cprint(order)
                 in_position = True
             else:
-                print("*** Buy Signal but already in position ***")
+                cprint(
+                    "*** Buy Signal but already in position ***", 'yellow', attrs=['bold'])
 
     elif last_row_close < last_row_ema:
         if previous_row_macd_line > previous_row_macd_signal_line and last_row_macd_line < last_row_macd_signal_line and last_row_macd_line > 0:
             if in_position:
-                print("*** Sell signal, making an order ***")
+                cprint("*** Sell signal, making an order ***",
+                       'green', attrs=['blink'])
                 order = exchange.create_market_sell_order(symbol, amount)
-                print(order)
+                cprint(order)
                 in_position = False
             else:
-                print("*** Sell Signal but not in position ***")
+                cprint("*** Sell Signal but not in position ***",
+                       'yellow', attrs=['bold'])
 
 
 def run_bot():
@@ -99,9 +112,10 @@ def run_bot():
             df = set_up_dataframe(data)
             check_for_signals(df, symbol)
     else:
-        print("Anna is resting...")
+        cprint("Anna is resting...")
 
 
+# print(get_account_balance('EUR'))
 schedule.every(1).minutes.do(run_bot)
 
 while True:
