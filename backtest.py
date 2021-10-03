@@ -27,7 +27,6 @@ def test_happy_path(df, symbol_info):
     for index in range(1, len(df)):
         two_latest_candles = df.iloc[[index - 1, index]]
         should_buy = check_buy_signal(two_latest_candles)
-        latest_close_price = df['close'][len(df) - 1]
 
         if should_buy:
             market_order = bc.create_market_order(
