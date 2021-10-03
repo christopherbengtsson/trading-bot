@@ -1,122 +1,62 @@
-import pandas as pd
-from ta import trend
+from binance.enums import SIDE_BUY, SIDE_SELL
+from telegram_alert import send_alert
 import schedule
-from datetime import datetime
 import time
-import ccxt
 import os
 from dotenv import load_dotenv
 from termcolor import cprint
-
-pd.set_option('display.max_rows', None)
+from binance_client import BinanceClient
+import strategy as st
 
 load_dotenv()
-exchange = ccxt.binance({
-    "apiKey": os.environ.get('API_KEY'),
-    "secret": os.environ.get('API_SECRET')
-})
-
-
-def get_account_balance(currency):
-    try:
-        return exchange.fetch_free_balance()[currency]
-    except:
-        cprint("No balance")
-
-
-def fetch_data(symbol, timeframe, limit):
-    cprint(f"Fetching new bars for {datetime.now().isoformat()}")
-    try:
-        return exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
-    except:
-        cprint("Failed fetching data", 'red', attrs=['bold'])
-        return []
-
-
-def set_up_dataframe(data):
-    try:
-        df = pd.DataFrame(data, columns=['timestamp',
-                                         'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-
-        # MACD
-        df['macd_line'] = trend.macd(close=df['close'])
-        df['macd_signal_line'] = trend.macd_signal(close=df['close'])
-        # df['macd_histogram'] = trend.macd_diff(close=df['close'])
-
-        # 200 EMA
-        df['200_ema'] = trend.ema_indicator(close=df['close'], window=200)
-
-        # print(df)
-
-        return df
-    except:
-        cprint("Failed setting up DateFrame", 'red', attrs=['bold'])
-        return pd.DataFrame()
 
 
 in_position = False
 
 
-def check_for_signals(df, symbol):
+def run_bot(bc: BinanceClient):
     global in_position
+    symbol = 'BTCUSDT'
 
-    last_row_index = len(df) - 1
-    previous_row_index = last_row_index - 1
+    # TODO When multiple cryptos, filter out unallowed ones
+    symbol_info = bc.get_symbol_info(symbol)
+    oco_is_allowed = symbol_info['ocoAllowed']
 
-    last_row_close = df['close'][last_row_index]
-    last_row_ema = df['200_ema'][last_row_index]
-
-    last_row_macd_line = df['macd_line'][last_row_index]
-    last_row_macd_signal_line = df['macd_signal_line'][last_row_index]
-
-    previous_row_macd_line = df['macd_line'][previous_row_index]
-    previous_row_macd_signal_line = df['macd_signal_line'][previous_row_index]
-
-    amount = 0.006
-
-    if last_row_close > last_row_ema:
-        if previous_row_macd_line < previous_row_macd_signal_line and last_row_macd_line > last_row_macd_signal_line and last_row_macd_line < 0:
-            if not in_position:
-                cprint("*** Buy signal, making an order ***",
-                       'green', attrs=['blink'])
-                order = exchange.create_market_buy_order(symbol, amount)
-                cprint(order)
-                in_position = True
-            else:
-                cprint(
-                    "*** Buy Signal but already in position ***", 'yellow', attrs=['bold'])
-
-    elif last_row_close < last_row_ema:
-        if previous_row_macd_line > previous_row_macd_signal_line and last_row_macd_line < last_row_macd_signal_line and last_row_macd_line > 0:
-            if in_position:
-                cprint("*** Sell signal, making an order ***",
-                       'green', attrs=['blink'])
-                order = exchange.create_market_sell_order(symbol, amount)
-                cprint(order)
-                in_position = False
-            else:
-                cprint("*** Sell Signal but not in position ***",
-                       'yellow', attrs=['bold'])
-
-
-def run_bot():
-    symbol = 'ETH/EUR'
-    timeframe = '30m'
-    limit = 300
-
-    if os.environ.get('RUN_ANNA') == 'True':
-        data = fetch_data(symbol=symbol, timeframe=timeframe, limit=limit)
+    if os.environ.get('RUN_ANNA') == 'True' and oco_is_allowed:
+        data = bc.fetch_data(symbol)
         if len(data) > 0:
-            df = set_up_dataframe(data)
-            check_for_signals(df, symbol)
+            df = st.set_up_dataframe(data)
+
+            should_buy = st.check_buy_signal(df)
+            latest_close_price = df['close'][len(df) - 1]
+            if should_buy:
+                market_order = bc.create_market_order(
+                    SIDE_BUY, symbol_info, latest_close_price)
+                if market_order:
+                    in_position = True
+                    cprint("*** Market order placed, making a OCO order ***",
+                           'green', attrs=['blink'])
+                    send_alert('Market order placed, making a OCO order')
+                    oco_order_success = bc.create_oco_order(
+                        SIDE_SELL, market_order, df, symbol_info)
+                    if oco_order_success:
+                        cprint("*** OCO order placed ***",
+                               'green', attrs=['blink'])
+                        send_alert('OCO order placed')
+                        # TODO Look for settled orders - set in_position
+
     else:
-        cprint("Anna is resting...")
+        print("Anna is resting...")
 
 
-# print(get_account_balance('EUR'))
-schedule.every(1).minutes.do(run_bot)
+if __name__ == '__main__':
+    bc = BinanceClient()
 
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+    run_bot(bc)
+
+    if os.environ.get('DEV') != 'True':
+        schedule.every(1).minutes.do(lambda: run_bot(bc))
+
+        while True:
+            schedule.run_pending()
+            time.sleep(1)

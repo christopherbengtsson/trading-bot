@@ -28,14 +28,14 @@ Trade with the MACD but make sure we stay in the same direction as the long term
    5. Wait for crossover on MACD to confirm reversal
    6. Take position
 
-## Dev
+## Setup
 
-Create a .env file and add following props:
-
-- API_KEY=your-api-key
-- API_SECRET=your-api-secret
-- RUN_ANNA=True
+Rename `.env-sample` to `.env` and add your values
 
 run `pip install -r requirements.txt`
 
 run `python3 anna.py`
+
+### Note to self:
+
+Trade only trending markets...
