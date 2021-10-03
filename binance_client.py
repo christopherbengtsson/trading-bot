@@ -101,7 +101,7 @@ class BinanceClient:
 
         return lowest_price
 
-    def create_market_order(self, side, symbol_info, latest_close_price):
+    def create_market_order(self, side, symbol_info):
         # TODO: Market or limit order?
 
         try:

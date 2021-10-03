@@ -31,7 +31,7 @@ def test_happy_path(df, symbol_info):
 
         if should_buy:
             market_order = bc.create_market_order(
-                side=SIDE_BUY, symbol_info=symbol_info, latest_close_price=latest_close_price)
+                side=SIDE_BUY, symbol_info=symbol_info)
             if market_order:
                 cprint("*** Market order placed, making a OCO order ***",
                        'green', attrs=['blink'])

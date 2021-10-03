@@ -31,10 +31,10 @@ def run_bot(bc: BinanceClient):
             df = st.set_up_dataframe(data)
 
             should_buy = st.check_buy_signal(df)
-            latest_close_price = df['close'][len(df) - 1]
+
             if should_buy:
                 market_order = bc.create_market_order(
-                    SIDE_BUY, symbol_info, latest_close_price)
+                    SIDE_BUY, symbol_info)
                 if market_order:
                     in_position = True
                     cprint("*** Market order placed, making a OCO order ***",
