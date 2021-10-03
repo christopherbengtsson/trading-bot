@@ -1,3 +1,4 @@
+from datetime import datetime
 from binance.enums import SIDE_BUY, SIDE_SELL
 from telegram_alert import send_alert
 import schedule
@@ -22,7 +23,9 @@ def run_bot(bc: BinanceClient):
     symbol_info = bc.get_symbol_info(symbol)
     oco_is_allowed = symbol_info['ocoAllowed']
 
-    if os.environ.get('RUN_ANNA') == 'True' and oco_is_allowed:
+    is_weekday = datetime.today().weekday() < 5
+
+    if os.environ.get('RUN_ANNA') == 'True' and oco_is_allowed and is_weekday:
         data = bc.fetch_data(symbol)
         if len(data) > 0:
             df = st.set_up_dataframe(data)

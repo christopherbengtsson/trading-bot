@@ -22,7 +22,7 @@ class BinanceClient:
             self.client = Client(os.environ.get('API_KEY'),
                                  os.environ.get('API_SECRET'))
 
-    def fetch_data(self, symbol, interval=KLINE_INTERVAL_30MINUTE, limit=500, backtest=False):
+    def fetch_data(self, symbol, interval=KLINE_INTERVAL_30MINUTE, limit=250, backtest=False):
         try:
             candles: Dict
             if not backtest:
