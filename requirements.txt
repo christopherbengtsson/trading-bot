@@ -1,8 +1,9 @@
 numpy
 pandas
-ccxt
+python-binance
 requests
 ta
 schedule
 python-dotenv
 termcolor
+python-telegram-bot
