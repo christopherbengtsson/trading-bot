@@ -1,3 +1,4 @@
+from binance.enums import SIDE_BUY, SIDE_SELL
 import pandas as pd
 from ta import trend
 from termcolor import cprint
@@ -31,7 +32,7 @@ def set_up_dataframe(data):
         return pd.DataFrame()
 
 
-def check_buy_signal(df):
+def check_strategy_signal(df):
     last_row_index = len(df) - 1
     previous_row_index = last_row_index - 1
 
@@ -49,7 +50,12 @@ def check_buy_signal(df):
         # Check for MACD crossover above 0 line
         if previous_row_macd_line <= previous_row_macd_signal_line and last_row_macd_line > last_row_macd_signal_line and last_row_macd_line < 0:
             # Buy
-            cprint("*** Strategy buy signal ***", 'green', attrs=['blink'])
-            return True
-
-    return False
+            # cprint("*** Strategy buy signal ***", 'green', attrs=['blink'])
+            return SIDE_BUY
+    # Check if in a downtrend
+    elif last_row_close < last_row_ema:
+        # Check for MACD crossover beneath 0 line
+        if previous_row_macd_line >= previous_row_macd_signal_line and last_row_macd_line < last_row_macd_signal_line and last_row_macd_line > 0:
+            # Buy
+            # cprint("*** Strategy sell signal ***", 'green', attrs=['blink'])
+            return SIDE_SELL

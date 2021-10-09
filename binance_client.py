@@ -8,6 +8,7 @@ from binance.exceptions import BinanceAPIException, BinanceOrderException
 from datetime import datetime
 from termcolor import cprint
 import os
+import json
 
 
 class BinanceClient:
@@ -21,6 +22,34 @@ class BinanceClient:
         else:
             self.client = Client(os.environ.get('API_KEY'),
                                  os.environ.get('API_SECRET'))
+
+        self.latest_transactions = []
+
+    def check_if_already_in_position(self, symbol, candle_datestamp):
+        transaction_to_add = {
+            "symbol": symbol,
+            "candle_datestamp": candle_datestamp
+        }
+
+        # If no transactions has been made
+        if len(self.latest_transactions) == 0:
+            self.latest_transactions.append(transaction_to_add)
+            return False
+
+        for transaction in self.latest_transactions:
+            # If transactions has been made with symbol
+            if transaction.get('symbol') == symbol:
+                # If transaction already made
+                if transaction.get('candle_datestamp') == candle_datestamp:
+                    return True
+                # If transaction not has been made
+                elif transaction.get('candle_datestamp') != candle_datestamp:
+                    transaction.update(transaction_to_add)
+                    return False
+
+        # If no transactions of this symbol
+        self.latest_transactions.append(transaction_to_add)
+        return False
 
     def fetch_data(self, symbol, interval=KLINE_INTERVAL_30MINUTE, limit=250, backtest=False):
         try:
@@ -101,30 +130,60 @@ class BinanceClient:
 
         return lowest_price
 
-    def create_market_order(self, side, symbol_info):
-        # TODO: Market or limit order?
+    def get_closest_swing_high(self, df):
+        highest_histo = 0
+        highest_price = 0
 
+        # Trying to find the latest swing high or pullback of trend
+        for current in range(1, len(df.index)):
+            # reverse column in dataframe and get index. So latest first.
+            previous_histo = df[::-1]['macd_histogram'][current]
+            previous_highest_price = float(df[::-1]['low'][current])
+
+            # check if first iteration or if hiso is negative, e.g. in a late sell
+            if highest_histo == 0 and previous_histo <= 0:
+                continue
+            elif highest_histo > 0 and previous_histo <= 0:
+                break
+
+            if previous_highest_price > highest_price:
+                highest_histo = previous_histo
+                highest_price = previous_highest_price
+            elif highest_price == 0:
+                highest_price = previous_highest_price
+
+        return highest_price
+
+    def create_market_order(self, side, symbol_info):
         try:
             symbol = symbol_info['symbol']
-            quote_amount = float(os.environ.get('MAX_USDT_PRICE'))  # UDST
+            quote_asset = symbol_info['quoteAsset']
+            quote_req_amount = float(os.environ.get('MAX_USDT_PRICE'))  # UDST
+
+            if os.environ.get('PLOT') == 'True':
+                balance = 5000
+            else:
+                balance = float(self.get_balance(quote_asset)['free'])
+
+            if quote_req_amount > balance:
+                quote_amount = balance
+            else:
+                quote_amount = quote_req_amount
 
             filters = symbol_info['filters']
             tick_size = self.get_filter(
                 filters, 'PRICE_FILTER', 'tickSize', True)
             req_price = round_step_size(quote_amount, tick_size)
 
-            if side == SIDE_BUY:
-                order = self.client.order_market_buy(
-                    symbol=symbol, quoteOrderQty=req_price)
-                print_json(order)
-                return order
-            # elif side == SIDE_SELL:
-            #     order = self.client.order_market_sell(
-            #         symbol=symbol, quantity=qty)
-            #     print_json(order)
-            #     return order
+            if os.environ.get('PLOT') == 'True':
+                with open('example_responses.json') as json_file:
+                    data = json.load(json_file)
+                return data['market_order']
 
-            return False
+            order = self.client.order_market(
+                symbol=symbol, quoteOrderQty=req_price, side=side)
+            print_json(order)
+            return order
 
         except BinanceAPIException as e:
             cprint(e, 'red', attrs=['bold'])
@@ -140,12 +199,12 @@ class BinanceClient:
         filters = symbol_info['filters']
         market_order_fills = market_order.get('fills')
         market_order_qty = float(market_order.get('executedQty'))
+
         purchase_price = sum(
             [float(f['price']) * (float(f['qty']) / market_order_qty) for f in market_order_fills])
         tick_size = self.get_filter(
             filters, 'PRICE_FILTER', 'tickSize', True)
 
-        swing_low = self.get_closest_swing_low(df)
         # *** Stop loss - lower than bought price ***
         # Long: set below the pullback of the trend
         # Short: set above the pullback of the trend
@@ -153,45 +212,49 @@ class BinanceClient:
         # stop signal
         stopPrice = purchase_price
         # actual sell price. To be more secure, set lower than stopPrice
-        stopLimitPrice = swing_low
+        stopLimitPrice = (self.get_closest_swing_low(
+            df) - tick_size) if side == SIDE_SELL else (self.get_closest_swing_high(df) + tick_size)
 
         # *** Take profit (higher than bought price) ***
         # Set 1.5x the size of the stop loss
-        req_price = stopPrice + ((stopPrice - stopLimitPrice) * 1.5)
+        req_price = 0
+        if side == SIDE_SELL:
+            req_price = stopPrice + ((stopPrice - stopLimitPrice) * 1.5)
+        else:
+            req_price = stopPrice + ((stopLimitPrice - stopPrice) * 1.5)
         take_profit = round_step_size(req_price, tick_size)
+
+        if os.environ.get('PLOT') == 'True':
+            return take_profit, stopPrice, stopLimitPrice
 
         # Price Restrictions:
         # SELL: Limit Price > Last Price > Stop Price
         # BUY: Limit Price < Last Price < Stop Price
-        if take_profit > stopPrice and stopPrice > stopLimitPrice and stopLimitPrice > 0:
-            try:
-                # creates two orders, one take profit and one stop-loss
-                cprint(
-                    f"Sending OCO order: take profit: {take_profit}, stopPrice: {stopPrice}, stopLimitPrice: {stopLimitPrice}, qty: {market_order_qty}", 'green', attrs=['bold'])
-                send_alert(
-                    f"Sending OCO order: take profit: {take_profit}, stopPrice: {stopPrice}, stopLimitPrice: {stopLimitPrice}")
-                order = self.client.create_oco_order(
-                    symbol=symbol,
-                    side=side,  # SELL/BUY
-                    quantity=market_order_qty,
-                    price=str(take_profit),
-                    stopPrice=str(stopPrice),
-                    stopLimitPrice=str(stopLimitPrice),
-                    stopLimitTimeInForce=TIME_IN_FORCE_GTC
-                )
-                print_json(order)
-                return True
-            except BinanceAPIException as e:
-                cprint(e, 'red', attrs=['bold'])
-                send_alert(e, True)
-                return False
-            except BinanceOrderException as e:
-                cprint(e, 'red', attrs=['bold'])
-                send_alert(e, True)
-                return False
-        else:
+        try:
+            # creates two orders, one take profit and one stop-loss
             cprint(
-                f'OCO order setup is incorrent: take profit: {take_profit}, stopPrice: {stopPrice}, stopLimitPrice: {stopLimitPrice}', 'red', attrs=['bold'])
+                f"Sending OCO order: take profit: {take_profit}, stopPrice: {stopPrice}, stopLimitPrice: {stopLimitPrice}, qty: {market_order_qty}", 'green', attrs=['bold'])
+            send_alert(
+                f"Sending OCO order: take profit: {take_profit}, stopPrice: {stopPrice}, stopLimitPrice: {stopLimitPrice}")
+            order = self.client.create_oco_order(
+                symbol=symbol,
+                side=side,  # SELL/BUY
+                quantity=market_order_qty,
+                price=str(take_profit),
+                stopPrice=str(stopPrice),
+                stopLimitPrice=str(stopLimitPrice),
+                stopLimitTimeInForce=TIME_IN_FORCE_GTC
+            )
+            print_json(order)
+            return True
+        except BinanceAPIException as e:
+            cprint(e, 'red', attrs=['bold'])
+            send_alert(e, True)
+            return False
+        except BinanceOrderException as e:
+            cprint(e, 'red', attrs=['bold'])
+            send_alert(e, True)
+            return False
 
     def validate(self, symbol, side, type, price, qty):
         order = self.client.create_test_order(

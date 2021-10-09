@@ -19,17 +19,29 @@ def run_bot(bc: BinanceClient, symbol_info):
     data = bc.fetch_data(symbol)
     if len(data) > 0:
         df = st.set_up_dataframe(data)
-        should_buy = st.check_buy_signal(df)
-        if should_buy:
+
+        last_close = df['close'][len(df) - 1]
+        signal = st.check_strategy_signal(df)
+
+        if signal == SIDE_BUY:
+            in_position = bc.check_if_already_in_position(symbol, last_close)
+
+            if in_position:
+                return
+
             market_order = bc.create_market_order(
-                SIDE_BUY, symbol_info)
+                signal, symbol_info)
+
             if market_order:
-                cprint(f"*** Market order placed for {symbol}, making a OCO order ***",
+                cprint(f"*** Market {signal} order placed for {symbol}, making a OCO order ***",
                        'green', attrs=['blink'])
                 send_alert(
-                    f'Market order placed for {symbol}, making a OCO order')
+                    f'Market {signal} order placed for {symbol}, making a OCO order')
+
+                oco_side = SIDE_BUY if signal == SIDE_SELL else SIDE_BUY
                 oco_order_success = bc.create_oco_order(
-                    SIDE_SELL, market_order, df, symbol_info)
+                    oco_side, market_order, df, symbol_info)
+
                 if oco_order_success:
                     cprint(f"*** OCO order placed for {symbol} ***",
                            'green', attrs=['blink'])
@@ -41,8 +53,10 @@ def for_each_crypto(bc: BinanceClient):
 
     if os.environ.get('RUN_ANNA') == 'True' and is_weekday:
         pairs = json.loads(os.environ.get('CRYPTOS'))
+
         for pair in pairs:
             symbol_info = bc.get_symbol_info(pair)
+
             if symbol_info and symbol_info['ocoAllowed']:
                 run_bot(bc, symbol_info)
     else:
