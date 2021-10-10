@@ -33,29 +33,25 @@ def set_up_dataframe(data):
 
 
 def check_strategy_signal(df):
-    last_row_index = len(df) - 1
-    previous_row_index = last_row_index - 1
+    last_closed_index = len(df) - 2
+    previous_closed_index = last_closed_index - 1
 
-    last_row_close = df['close'][last_row_index]
-    last_row_ema = df['ema200'][last_row_index]
+    last_closed_price = df['close'][last_closed_index]
+    last_closed_ema = df['ema200'][last_closed_index]
 
-    last_row_macd_line = df['macd_line'][last_row_index]
-    last_row_macd_signal_line = df['macd_signal_line'][last_row_index]
+    last_closed_macd_line = df['macd_line'][last_closed_index]
+    last_closed_macd_signal_line = df['macd_signal_line'][last_closed_index]
 
-    previous_row_macd_line = df['macd_line'][previous_row_index]
-    previous_row_macd_signal_line = df['macd_signal_line'][previous_row_index]
+    previous_closed_macd_line = df['macd_line'][previous_closed_index]
+    previous_closed_macd_signal_line = df['macd_signal_line'][previous_closed_index]
 
     # Check if in a uptrend
-    if last_row_close > last_row_ema:
+    if last_closed_price > last_closed_ema:
         # Check for MACD crossover above 0 line
-        if previous_row_macd_line <= previous_row_macd_signal_line and last_row_macd_line > last_row_macd_signal_line and last_row_macd_line < 0:
-            # Buy
-            # cprint("*** Strategy buy signal ***", 'green', attrs=['blink'])
+        if previous_closed_macd_line <= previous_closed_macd_signal_line and last_closed_macd_line > last_closed_macd_signal_line and last_closed_macd_line < 0:
             return SIDE_BUY
     # Check if in a downtrend
-    elif last_row_close < last_row_ema:
+    elif last_closed_price < last_closed_ema:
         # Check for MACD crossover beneath 0 line
-        if previous_row_macd_line >= previous_row_macd_signal_line and last_row_macd_line < last_row_macd_signal_line and last_row_macd_line > 0:
-            # Buy
-            # cprint("*** Strategy sell signal ***", 'green', attrs=['blink'])
+        if previous_closed_macd_line >= previous_closed_macd_signal_line and last_closed_macd_line < last_closed_macd_signal_line and last_closed_macd_line > 0:
             return SIDE_SELL
