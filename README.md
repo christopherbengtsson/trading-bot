@@ -1,6 +1,6 @@
 # Trading Bot (Anna)
 
-A crypto trading bot live trading on a Binance account.
+A crypto trading bot live trading on a Binance account, sending notifications to a Telegram bot.
 
 ## Strategy
 

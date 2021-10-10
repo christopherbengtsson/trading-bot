@@ -133,3 +133,4 @@ dmypy.json
 .env
 stuff
 .vscode
+example_data

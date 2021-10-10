@@ -1,6 +1,5 @@
 from datetime import datetime
 from binance.enums import SIDE_BUY, SIDE_SELL
-from telegram_alert import send_alert
 import schedule
 import time
 import os
@@ -15,18 +14,17 @@ load_dotenv()
 
 def run_bot(bc: BinanceClient, symbol_info):
     symbol = symbol_info['symbol']
-
     data = bc.fetch_data(symbol)
+
     if len(data) > 0:
         df = st.set_up_dataframe(data)
-
-        last_close = df['close'][len(df) - 1]
         signal = st.check_strategy_signal(df)
 
         if signal == SIDE_BUY:
-            in_position = bc.check_if_already_in_position(symbol, last_close)
+            orders = bc.get_open_orders(symbol)
 
-            if in_position:
+            if len(orders) > 0:
+                print(f'Already an active order for {symbol}')
                 return
 
             market_order = bc.create_market_order(
@@ -35,8 +33,6 @@ def run_bot(bc: BinanceClient, symbol_info):
             if market_order:
                 cprint(f"*** Market {signal} order placed for {symbol}, making a OCO order ***",
                        'green', attrs=['blink'])
-                send_alert(
-                    f'Market {signal} order placed for {symbol}, making a OCO order')
 
                 oco_side = SIDE_BUY if signal == SIDE_SELL else SIDE_BUY
                 oco_order_success = bc.create_oco_order(
@@ -45,7 +41,6 @@ def run_bot(bc: BinanceClient, symbol_info):
                 if oco_order_success:
                     cprint(f"*** OCO order placed for {symbol} ***",
                            'green', attrs=['blink'])
-                    send_alert(f'OCO order placed for {symbol}')
 
 
 def for_each_crypto(bc: BinanceClient):
@@ -60,7 +55,10 @@ def for_each_crypto(bc: BinanceClient):
             if symbol_info and symbol_info['ocoAllowed']:
                 run_bot(bc, symbol_info)
     else:
-        print("Anna is resting...")
+        if is_weekday:
+            print("Anna doesn't work on weekends...")
+        else:
+            print("Anna is resting...")
 
 
 if __name__ == '__main__':
@@ -69,7 +67,8 @@ if __name__ == '__main__':
     for_each_crypto(bc)
 
     if os.environ.get('DEV') != 'True':
-        schedule.every(1).minutes.do(lambda: for_each_crypto(bc))
+        schedule.every().hour.at(":00").do(lambda: for_each_crypto(bc))
+        schedule.every().hour.at(":30").do(lambda: for_each_crypto(bc))
 
         while True:
             schedule.run_pending()
