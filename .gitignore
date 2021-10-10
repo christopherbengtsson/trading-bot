@@ -134,3 +134,5 @@ dmypy.json
 stuff
 .vscode
 example_data
+test.py
+todos.md
