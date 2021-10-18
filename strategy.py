@@ -5,14 +5,14 @@ from ta import volatility
 from termcolor import cprint
 
 
-def get_indicators(close):
-    macd_line = trend.macd(close=close)
-    macd_signal_line = trend.macd_signal(close=close)
-    macd_histogram = trend.macd_diff(close=close)
+def get_indicators(high, low, close):
+    macd_line = trend.macd(close)
+    macd_signal_line = trend.macd_signal(close)
+    macd_histogram = trend.macd_diff(close)
 
-    ema200 = trend.ema_indicator(close=close, window=200)
+    ema200 = trend.ema_indicator(close, window=200)
 
-    atr = volatility.average_true_range()
+    atr = volatility.average_true_range(high, low, close)
 
     return macd_line, macd_signal_line, macd_histogram, ema200, atr
 
@@ -27,7 +27,7 @@ def set_up_dataframe(data):
             df.index, unit='ms', utc=True, infer_datetime_format=True)
 
         df['macd_line'], df['macd_signal_line'], df['macd_histogram'], df['ema200'], df['atr'] = get_indicators(
-            df['close'])
+            df['high'], df['low'], df['close'])
 
         return df
     except:
