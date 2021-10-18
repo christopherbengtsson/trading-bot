@@ -1,6 +1,7 @@
 from binance.enums import SIDE_BUY, SIDE_SELL
 import pandas as pd
 from ta import trend
+from ta import volatility
 from termcolor import cprint
 
 
@@ -11,7 +12,9 @@ def get_indicators(close):
 
     ema200 = trend.ema_indicator(close=close, window=200)
 
-    return macd_line, macd_signal_line, macd_histogram, ema200
+    atr = volatility.average_true_range()
+
+    return macd_line, macd_signal_line, macd_histogram, ema200, atr
 
 
 def set_up_dataframe(data):
@@ -23,7 +26,7 @@ def set_up_dataframe(data):
         df.index = pd.to_datetime(
             df.index, unit='ms', utc=True, infer_datetime_format=True)
 
-        df['macd_line'], df['macd_signal_line'], df['macd_histogram'], df['ema200'] = get_indicators(
+        df['macd_line'], df['macd_signal_line'], df['macd_histogram'], df['ema200'], df['atr'] = get_indicators(
             df['close'])
 
         return df
