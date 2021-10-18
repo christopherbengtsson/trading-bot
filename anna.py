@@ -55,7 +55,7 @@ def for_each_crypto(bc: BinanceClient):
             if symbol_info and symbol_info['ocoAllowed']:
                 run_bot(bc, symbol_info)
     else:
-        if is_weekday:
+        if not is_weekday:
             print("Anna doesn't work on weekends...")
         else:
             print("Anna is resting...")
