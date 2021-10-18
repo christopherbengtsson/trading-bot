@@ -1,6 +1,6 @@
 from binance.helpers import round_step_size
 from typing import Dict
-from utils import print_json
+from binance import ThreadedWebsocketManager
 from telegram_alert import send_alert
 from binance.client import Client
 from binance.enums import *
@@ -9,47 +9,53 @@ from datetime import datetime
 from termcolor import cprint
 import os
 import json
+from ws_message_handler import handle_ws_messages
+
+
+ATR_MULTIPLIER = 1
 
 
 class BinanceClient:
     def __init__(self):
-        if os.environ.get('DEV') == 'True':
+        testnet = os.environ.get('DEV') == 'True'
+
+        if testnet:
             cprint("*** Using TestNet API ***",
                    'green', attrs=['bold', 'underline'])
 
-            self.client = Client(os.environ.get('API_KEY_TESTNET'),
-                                 os.environ.get('API_SECRET_TESTNET'), testnet=True)
+            api_key = os.environ.get('API_KEY_TESTNET')
+            api_secret = os.environ.get('API_SECRET_TESTNET')
         else:
-            self.client = Client(os.environ.get('API_KEY'),
-                                 os.environ.get('API_SECRET'))
+            api_key = os.environ.get('API_KEY')
+            api_secret = os.environ.get('API_SECRET')
+
+        self.client = Client(api_key, api_secret,
+                             testnet=testnet)
+        self.twm = ThreadedWebsocketManager(
+            api_key=api_key, api_secret=api_secret, testnet=testnet)
 
         self.latest_transactions = []
+        self.start_websocket()
 
-    def check_if_already_in_position(self, symbol, candle_datestamp):
-        transaction_to_add = {
-            "symbol": symbol,
-            "candle_datestamp": candle_datestamp
-        }
+    def start_websocket(self):
+        self.twm.start()
 
-        # If no transactions has been made
-        if len(self.latest_transactions) == 0:
-            self.latest_transactions.append(transaction_to_add)
-            return False
+        self.twm.start_user_socket(callback=handle_ws_messages)
 
-        for transaction in self.latest_transactions:
-            # If transactions has been made with symbol
-            if transaction.get('symbol') == symbol:
-                # If transaction already made
-                if transaction.get('candle_datestamp') == candle_datestamp:
-                    return True
-                # If transaction not has been made
-                elif transaction.get('candle_datestamp') != candle_datestamp:
-                    transaction.update(transaction_to_add)
-                    return False
+    def get_open_orders(self, symbol):
+        try:
+            return self.client.get_open_orders(symbol=symbol)
+        except BinanceAPIException as e:
+            cprint(e, 'red', attrs=['bold'])
+            send_alert(e, True)
+            return []
+        except BinanceOrderException as e:
+            cprint(e, 'red', attrs=['bold'])
+            send_alert(e, True)
+            return []
 
-        # If no transactions of this symbol
-        self.latest_transactions.append(transaction_to_add)
-        return False
+    def cancel_order_by_id(self, orderId, symbol):
+        return self.client.cancel_order(symbol=symbol, orderId=orderId)
 
     def fetch_data(self, symbol, interval=KLINE_INTERVAL_30MINUTE, limit=250, backtest=False):
         try:
@@ -111,10 +117,10 @@ class BinanceClient:
         lowest_price = 0
 
         # Trying to find the latest swing low or pullback of trend
-        for current in range(1, len(df.index)):
-            # reverse column in dataframe and get index. So latest first.
-            previous_histo = df[::-1]['macd_histogram'][current]
-            previous_lowest_price = float(df[::-1]['low'][current])
+        for current in range(len(df) - 2, 0, -1):
+            # reverse loop, latest first
+            previous_histo = float(df['macd_histogram'][current])
+            previous_lowest_price = float(df['low'][current])
 
             # check if first iteration or if hiso is positive, e.g. in a late buy
             if lowest_histo == 0 and previous_histo >= 0:
@@ -135,10 +141,10 @@ class BinanceClient:
         highest_price = 0
 
         # Trying to find the latest swing high or pullback of trend
-        for current in range(1, len(df.index)):
-            # reverse column in dataframe and get index. So latest first.
-            previous_histo = df[::-1]['macd_histogram'][current]
-            previous_highest_price = float(df[::-1]['low'][current])
+        for current in range(len(df) - 2, 0, -1):
+            # reverse loop, latest first
+            previous_histo = float(df['macd_histogram'][current])
+            previous_highest_price = float(df['high'][current])
 
             # check if first iteration or if hiso is negative, e.g. in a late sell
             if highest_histo == 0 and previous_histo <= 0:
@@ -180,9 +186,10 @@ class BinanceClient:
                     data = json.load(json_file)
                 return data['market_order']
 
+            print('Placing market order...')
             order = self.client.order_market(
                 symbol=symbol, quoteOrderQty=req_price, side=side)
-            print_json(order)
+
             return order
 
         except BinanceAPIException as e:
@@ -208,20 +215,26 @@ class BinanceClient:
         # *** Stop loss - lower than bought price ***
         # Long: set below the pullback of the trend
         # Short: set above the pullback of the trend
+        # actual sell price. To be more secure, set lower than stopPrice
+        latest_closed_atr = df['atr'][len(df) - 2]
+
+        stopLimitPrice = round_step_size(
+            purchase_price - (latest_closed_atr * ATR_MULTIPLIER), tick_size)
 
         # stop signal
-        stopPrice = purchase_price
-        # actual sell price. To be more secure, set lower than stopPrice
-        stopLimitPrice = (self.get_closest_swing_low(
-            df) - tick_size) if side == SIDE_SELL else (self.get_closest_swing_high(df) + tick_size)
+        # +10% of sell price + 2 pips
+        stopPrice = round_step_size(
+            (stopLimitPrice + ((purchase_price - stopLimitPrice) * 10 / 100)) + (tick_size * 2), tick_size)
 
         # *** Take profit (higher than bought price) ***
         # Set 1.5x the size of the stop loss
         req_price = 0
         if side == SIDE_SELL:
-            req_price = stopPrice + ((stopPrice - stopLimitPrice) * 1.5)
+            req_price = purchase_price + \
+                ((purchase_price - stopLimitPrice) * 1.5)
         else:
-            req_price = stopPrice + ((stopLimitPrice - stopPrice) * 1.5)
+            req_price = purchase_price + \
+                ((stopLimitPrice - purchase_price) * 1.5)
         take_profit = round_step_size(req_price, tick_size)
 
         if os.environ.get('PLOT') == 'True':
@@ -234,9 +247,8 @@ class BinanceClient:
             # creates two orders, one take profit and one stop-loss
             cprint(
                 f"Sending OCO order: take profit: {take_profit}, stopPrice: {stopPrice}, stopLimitPrice: {stopLimitPrice}, qty: {market_order_qty}", 'green', attrs=['bold'])
-            send_alert(
-                f"Sending OCO order: take profit: {take_profit}, stopPrice: {stopPrice}, stopLimitPrice: {stopLimitPrice}")
-            order = self.client.create_oco_order(
+
+            self.client.create_oco_order(
                 symbol=symbol,
                 side=side,  # SELL/BUY
                 quantity=market_order_qty,
@@ -245,7 +257,7 @@ class BinanceClient:
                 stopLimitPrice=str(stopLimitPrice),
                 stopLimitTimeInForce=TIME_IN_FORCE_GTC
             )
-            print_json(order)
+
             return True
         except BinanceAPIException as e:
             cprint(e, 'red', attrs=['bold'])
