@@ -68,8 +68,8 @@ if __name__ == '__main__':
     for_each_crypto(bc)
 
     if os.environ.get('DEV') != 'True':
-        schedule.every().hour.at(":00").do(lambda: for_each_crypto(bc))
-        schedule.every().hour.at(":30").do(lambda: for_each_crypto(bc))
+        schedule.every().hour.at("00:05").do(lambda: for_each_crypto(bc))
+        schedule.every().hour.at("30:05").do(lambda: for_each_crypto(bc))
 
         while True:
             schedule.run_pending()
