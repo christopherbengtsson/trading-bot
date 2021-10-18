@@ -18,6 +18,7 @@ def run_bot(bc: BinanceClient, symbol_info):
 
     if len(data) > 0:
         df = st.set_up_dataframe(data)
+        print(df.tail(3))
         signal = st.check_strategy_signal(df)
 
         if signal == SIDE_BUY:
