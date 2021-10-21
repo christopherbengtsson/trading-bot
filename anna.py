@@ -35,7 +35,7 @@ def run_bot(bc: BinanceClient, symbol_info):
                 cprint(f"*** Market {signal} order placed for {symbol}, making a OCO order ***",
                        'green', attrs=['blink'])
 
-                oco_side = SIDE_BUY if signal == SIDE_SELL else SIDE_BUY
+                oco_side = SIDE_BUY if signal == SIDE_SELL else SIDE_SELL
                 oco_order_success = bc.create_oco_order(
                     oco_side, market_order, df, symbol_info)
 
