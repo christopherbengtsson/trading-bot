@@ -12,7 +12,8 @@ import json
 from ws_message_handler import handle_ws_messages
 
 
-ATR_MULTIPLIER = os.environ.get('ATR_MULTIPLIER')
+ATR_MULTIPLIER = float(os.environ.get('ATR_MULTIPLIER'))
+RISK_REWARD_RATIO = float(os.environ.get('RISK_REWARD_RATIO'))
 
 
 class BinanceClient:
@@ -231,10 +232,10 @@ class BinanceClient:
         req_price = 0
         if side == SIDE_SELL:
             req_price = purchase_price + \
-                ((purchase_price - stopLimitPrice) * 1.5)
+                ((purchase_price - stopLimitPrice) * RISK_REWARD_RATIO)
         else:
             req_price = purchase_price + \
-                ((stopLimitPrice - purchase_price) * 1.5)
+                ((stopLimitPrice - purchase_price) * RISK_REWARD_RATIO)
         take_profit = round_step_size(req_price, tick_size)
 
         if os.environ.get('PLOT') == 'True':
