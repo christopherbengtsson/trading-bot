@@ -12,7 +12,7 @@ import json
 from ws_message_handler import handle_ws_messages
 
 
-ATR_MULTIPLIER = 1
+ATR_MULTIPLIER = os.environ.get('ATR_MULTIPLIER')
 
 
 class BinanceClient:
