@@ -49,7 +49,7 @@ def handle_ws_messages(msg):
             # Stop loss
             if current_order_status == 'NEW':
                 send_alert(
-                    f'Stop loss order ID {order_ID} for {symbol} placed. Trigger price: {order_price}, stop loss: {stop_price}')
+                    f'Stop loss order ID {order_ID} for {symbol} placed. Trigger price: {stop_price}, stop loss: {order_price}')
             elif current_order_status == ORDER_STATUS_FILLED:
                 send_alert(
                     f'OCO order ID {order_ID} for {symbol} {alert_side} at stop loss at {last_executed_price}')
