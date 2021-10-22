@@ -21,23 +21,32 @@ def run_bot(bc: BinanceClient, symbol_info):
         print(df.tail(3))
         signal = st.check_strategy_signal(df)
 
-        if signal == SIDE_BUY:
-            orders = bc.get_open_orders(symbol)
-
-            if len(orders) > 0:
-                print(f'Already an active order for {symbol}')
-                return
-
+        if signal == SIDE_SELL:
             market_order = bc.create_market_order(
                 signal, symbol_info)
 
-            if market_order:
-                cprint(f"*** Market {signal} order placed for {symbol}, making a OCO order ***",
+        elif signal == SIDE_BUY:
+            orders = bc.get_open_orders(symbol)
+
+            if len(orders) > 0:
+                print(f'Already an active order for {symbol}, aborting market buy')
+                return
+        else:
+            return
+
+        market_order = bc.create_market_order(
+            signal, symbol_info)
+
+        if market_order:
+            cprint(f"*** Market {signal} order placed for {symbol} ***",
+                   'green', attrs=['blink'])
+
+            if signal == SIDE_BUY:
+                cprint(f"*** Creating OCO order for {symbol} ***",
                        'green', attrs=['blink'])
 
-                oco_side = SIDE_BUY if signal == SIDE_SELL else SIDE_SELL
                 oco_order_success = bc.create_oco_order(
-                    oco_side, market_order, df, symbol_info)
+                    SIDE_SELL, market_order, df, symbol_info)
 
                 if oco_order_success:
                     cprint(f"*** OCO order placed for {symbol} ***",

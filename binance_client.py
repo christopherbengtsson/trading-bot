@@ -107,6 +107,18 @@ class BinanceClient:
             send_alert(e, True)
             return False
 
+    def get_trade_fee(self, symbol):
+        try:
+            return self.client.get_trade_fee(symbol=symbol)
+        except BinanceAPIException as e:
+            cprint(e, 'red', attrs=['bold'])
+            send_alert(e, True)
+            return 15
+        except BinanceOrderException as e:
+            cprint(e, 'red', attrs=['bold'])
+            send_alert(e, True)
+            return 15
+
     def get_filter(self, filters, filter_type, filter_prop, get_float=False):
         for f in filters:
             if f['filterType'] == filter_type:
@@ -165,17 +177,23 @@ class BinanceClient:
         try:
             symbol = symbol_info['symbol']
             quote_asset = symbol_info['quoteAsset']
-            quote_req_amount = float(os.environ.get('MAX_USDT_PRICE'))  # UDST
+            quote_req_amount = float(os.environ.get('MAX_USDT_PRICE'))
 
             if os.environ.get('PLOT') == 'True':
                 balance = 5000
             else:
                 balance = float(self.get_balance(quote_asset)['free'])
 
-            if quote_req_amount > balance:
-                quote_amount = balance
+            if side == SIDE_SELL:
+                if balance >= quote_req_amount / 2:
+                    quote_amount = balance * 0.9
+                else:
+                    return
             else:
-                quote_amount = quote_req_amount
+                if quote_req_amount > balance:
+                    quote_amount = balance
+                else:
+                    quote_amount = quote_req_amount
 
             filters = symbol_info['filters']
             tick_size = self.get_filter(
