@@ -20,9 +20,9 @@ def run_bot(bc: BinanceClient, symbol_info):
         df = st.set_up_dataframe(data)
         print(df.tail(3))
         signal = st.check_strategy_signal(df)
+        last_closed_price = df['close'][len(df) - 1]
 
         if signal == SIDE_SELL:
-            last_closed_price = df['close'][len(df) - 1]
             market_order = bc.create_market_order(
                 signal, symbol_info, last_closed_price)
 
@@ -37,7 +37,7 @@ def run_bot(bc: BinanceClient, symbol_info):
             return
 
         market_order = bc.create_market_order(
-            signal, symbol_info)
+            signal, symbol_info, last_closed_price)
 
         if market_order:
             cprint(f"*** Market {signal} order placed for {symbol} ***",
