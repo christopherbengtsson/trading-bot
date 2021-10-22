@@ -39,6 +39,7 @@ def check_strategy_signal(df):
     last_closed_index = len(df) - 2
     previous_closed_index = last_closed_index - 1
 
+    last_opened_price = df['open'][last_closed_index]
     last_closed_price = df['close'][last_closed_index]
     last_closed_ema = df['ema200'][last_closed_index]
 
@@ -48,13 +49,11 @@ def check_strategy_signal(df):
     previous_closed_macd_line = df['macd_line'][previous_closed_index]
     previous_closed_macd_signal_line = df['macd_signal_line'][previous_closed_index]
 
-    # Check if in a uptrend
-    if last_closed_price > last_closed_ema:
+    # Check candle was opened and closed above EMA 200
+    if last_closed_price > last_closed_ema and last_opened_price > last_closed_ema:
         # Check for MACD crossover above 0 line
         if previous_closed_macd_line <= previous_closed_macd_signal_line and last_closed_macd_line > last_closed_macd_signal_line and last_closed_macd_line < 0:
             return SIDE_BUY
-    # Check if in a downtrend
-    elif last_closed_price < last_closed_ema:
-        # Check for MACD crossover beneath 0 line
-        if previous_closed_macd_line >= previous_closed_macd_signal_line and last_closed_macd_line < last_closed_macd_signal_line and last_closed_macd_line > 0:
-            return SIDE_SELL
+    # Check candle was opened and closed below EMA 200
+    elif last_closed_price < last_closed_ema and last_opened_price < last_closed_ema:
+        return SIDE_SELL
