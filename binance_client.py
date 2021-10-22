@@ -173,25 +173,28 @@ class BinanceClient:
 
         return highest_price
 
-    def create_market_order(self, side, symbol_info):
+    def create_market_order(self, side, symbol_info, last_closed_price):
         try:
             symbol = symbol_info['symbol']
             quote_asset = symbol_info['quoteAsset']
+            base_asset = symbol_info['baseAsset']
             quote_req_amount = float(os.environ.get('MAX_USDT_PRICE'))
 
             if os.environ.get('PLOT') == 'True':
-                balance = 5000
+                buy_balance = 5000
             else:
-                balance = float(self.get_balance(quote_asset)['free'])
+                buy_balance = float(self.get_balance(quote_asset)['free'])
+                sell_balance = float(self.get_balance(base_asset)['free'])
 
             if side == SIDE_SELL:
-                if balance >= quote_req_amount / 2:
-                    quote_amount = balance * 0.9
+                amount_of_crypto_in_quote = sell_balance * last_closed_price # ish
+                if amount_of_crypto_in_quote >= quote_req_amount / 2:
+                    quote_amount = amount_of_crypto_in_quote * 0.9
                 else:
                     return
             else:
-                if quote_req_amount > balance:
-                    quote_amount = balance
+                if quote_req_amount > buy_balance:
+                    quote_amount = buy_balance
                 else:
                     quote_amount = quote_req_amount
 

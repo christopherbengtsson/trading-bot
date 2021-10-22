@@ -22,14 +22,16 @@ def run_bot(bc: BinanceClient, symbol_info):
         signal = st.check_strategy_signal(df)
 
         if signal == SIDE_SELL:
+            last_closed_price = df['close'][len(df) - 1]
             market_order = bc.create_market_order(
-                signal, symbol_info)
+                signal, symbol_info, last_closed_price)
 
         elif signal == SIDE_BUY:
             orders = bc.get_open_orders(symbol)
 
             if len(orders) > 0:
-                print(f'Already an active order for {symbol}, aborting market buy')
+                print(
+                    f'Already an active order for {symbol}, aborting market buy')
                 return
         else:
             return
