@@ -72,8 +72,6 @@ def for_each_crypto(bc: BinanceClient):
 if __name__ == '__main__':
     bc = BinanceClient()
 
-    for_each_crypto(bc)
-
     if os.environ.get('DEV') != 'True':
         schedule.every().hour.at("00:05").do(lambda: for_each_crypto(bc))
         schedule.every().hour.at("30:05").do(lambda: for_each_crypto(bc))
