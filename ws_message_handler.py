@@ -41,39 +41,53 @@ def handle_ws_messages(msg):
         cumulative_quote_asset_transacted_quantity = msg["Z"]
         last_quote_asset_transacted_quantity = msg["Y"]
         quote_Order_Qty = msg["Q"]
-        alert_side = 'sold' if side == SIDE_SELL else 'bought'
+
+        alert_side = 'sell' if side == SIDE_SELL else 'buy'
+
         if order_type == ORDER_TYPE_MARKET and current_order_status == ORDER_STATUS_FILLED:
-            send_alert(
-                f'Market order ID {order_ID} for {symbol} filled, {alert_side} {order_quantity} for {last_executed_price} at a total price of {quote_Order_Qty}')
+            send_alert(f"""<strong><u>Market {alert_side} order {symbol}</u></strong>
+<pre>
+Amount: {last_executed_price}
+Quantity: {order_quantity}
+Price: {quote_Order_Qty}
+</pre>""")
+
         elif order_type == ORDER_TYPE_STOP_LOSS_LIMIT:
             # Stop loss
             if current_order_status == 'NEW':
-                send_alert(
-                    f'Stop loss order ID {order_ID} for {symbol} placed. Trigger price: {stop_price}, stop loss: {order_price}')
+                send_alert(f"""<i><u>Stoploss {symbol}</u></i>
+
+<pre>Trigger Price: {stop_price}
+Stoploss: {order_price}</pre>""")
+
             elif current_order_status == ORDER_STATUS_FILLED:
-                send_alert(
-                    f'OCO order ID {order_ID} for {symbol} {alert_side} at stop loss at {last_executed_price}')
+                send_alert(f"""⛔️ <strong><u>Stoploss executed {symbol}</u></strong> ⛔️
+
+<pre>Price: {last_executed_price}</pre>""")
+
         elif order_type == ORDER_TYPE_LIMIT_MAKER:
             # Take profit
             if current_order_status == 'NEW':
-                send_alert(
-                    f'Profit order ID {order_ID} placed for {symbol}. Target is {order_price}')
+                send_alert(f"""<i><u>Take Profit {symbol}</u></i>
+
+<pre>Target: {order_price}</pre>""")
+
             elif current_order_status == ORDER_STATUS_FILLED:
-                send_alert(
-                    f'OCO order ID {order_ID} for {symbol} {alert_side} at profit target at {last_executed_price}')
+                send_alert(f"""✅ <strong><u>Take Profit executed {symbol}</u></strong> ✅
+
+<pre>Price: {last_executed_price}</pre>""")
 
     elif msg['e'] == 'listStatus':
         print_json(msg)
-        orders = msg['O']
-        orderId1 = orders[0]['i']
-        orderId2 = orders[1]['i']
+
+        symbol = msg["s"]
         if msg['l'] == 'EXEC_STARTED':
             send_alert(
-                f'OCO order placed. Order IDs {orderId1} and {orderId2}')
+                f"""<i>OCO order <u>PLACED</u> for <u>{symbol}</u></i>""")
         elif msg['l'] == 'ALL_DONE':
-            send_alert(
-                f'OCO order DONE. Order IDs {orderId1} and {orderId2}')
+            send_alert(f"""<i>OCO order <u>DONE</u> for <u>{symbol}</u></i>""")
         elif msg['l'] == 'RESPONSE':
             reject = msg['r']
-            send_alert(
-                f'Something went bad with OCO order: {reject}', True)
+            send_alert(f"""Something went bad with OCO order:
+
+{reject}""", True)
