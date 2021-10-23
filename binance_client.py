@@ -184,23 +184,21 @@ class BinanceClient:
         tick_size = self.get_filter(
             filters, 'PRICE_FILTER', 'tickSize', True)
 
-        # *** Stop loss - lower than bought price ***
+        # stop signal at closest swing low
+        lowest_of_last_10 = df.tail(11)['low'].min()
+        stopPrice = round_step_size(lowest_of_last_10 - tick_size, tick_size)
+
+        # *** Stop loss ***
         # Long: set below the pullback of the trend
         # Short: set above the pullback of the trend
         # actual sell price. To be more secure, set lower than stopPrice
-
-        lowest_of_last_10 = df.tail(11)['low'].min()
-        stopLimitPrice = round_step_size(lowest_of_last_10, tick_size)
-
-        # stop signal
-        # (ATR at lowest point) * 1 pip of sell price
         atr_at_lowest = 1
         for row in df.tail(11).itertuples():
             if(row.low == lowest_of_last_10):
                 atr_at_lowest = row.atr
                 break
-        stopPrice = round_step_size(
-            stopLimitPrice + (tick_size * atr_at_lowest), tick_size)
+        stopLimitPrice = round_step_size(
+            stopPrice - (tick_size * atr_at_lowest), tick_size)
 
         # *** Take profit (higher than bought price) ***
         # Set 1.5x the size of the stop loss
