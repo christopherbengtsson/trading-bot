@@ -12,13 +12,11 @@ import json
 from ws_message_handler import handle_ws_messages
 
 
-ATR_MULTIPLIER = float(os.environ.get('ATR_MULTIPLIER'))
-RISK_REWARD_RATIO = float(os.environ.get('RISK_REWARD_RATIO'))
-
-
 class BinanceClient:
     def __init__(self):
         testnet = os.environ.get('DEV') == 'True'
+
+        self.RISK_REWARD_RATIO = float(os.environ.get('RISK_REWARD_RATIO'))
 
         if testnet:
             cprint("*** Using TestNet API ***",
@@ -125,54 +123,6 @@ class BinanceClient:
                 result = (f[filter_prop])
                 return float(result) if get_float else result
 
-    def get_closest_swing_low(self, df):
-        lowest_histo = 0
-        lowest_price = 0
-
-        # Trying to find the latest swing low or pullback of trend
-        for current in range(len(df) - 2, 0, -1):
-            # reverse loop, latest first
-            previous_histo = float(df['macd_histogram'][current])
-            previous_lowest_price = float(df['low'][current])
-
-            # check if first iteration or if hiso is positive, e.g. in a late buy
-            if lowest_histo == 0 and previous_histo >= 0:
-                continue
-            elif lowest_histo < 0 and previous_histo >= 0:
-                break
-
-            if previous_lowest_price < lowest_price:
-                lowest_histo = previous_histo
-                lowest_price = previous_lowest_price
-            elif lowest_price == 0:
-                lowest_price = previous_lowest_price
-
-        return lowest_price
-
-    def get_closest_swing_high(self, df):
-        highest_histo = 0
-        highest_price = 0
-
-        # Trying to find the latest swing high or pullback of trend
-        for current in range(len(df) - 2, 0, -1):
-            # reverse loop, latest first
-            previous_histo = float(df['macd_histogram'][current])
-            previous_highest_price = float(df['high'][current])
-
-            # check if first iteration or if hiso is negative, e.g. in a late sell
-            if highest_histo == 0 and previous_histo <= 0:
-                continue
-            elif highest_histo > 0 and previous_histo <= 0:
-                break
-
-            if previous_highest_price > highest_price:
-                highest_histo = previous_histo
-                highest_price = previous_highest_price
-            elif highest_price == 0:
-                highest_price = previous_highest_price
-
-        return highest_price
-
     def create_market_order(self, side, symbol_info, last_closed_price):
         try:
             symbol = symbol_info['symbol']
@@ -187,7 +137,7 @@ class BinanceClient:
                 sell_balance = float(self.get_balance(base_asset)['free'])
 
             if side == SIDE_SELL:
-                amount_of_crypto_in_quote = sell_balance * last_closed_price # ish
+                amount_of_crypto_in_quote = sell_balance * last_closed_price  # ish
                 if amount_of_crypto_in_quote >= quote_req_amount / 2:
                     quote_amount = amount_of_crypto_in_quote * 0.9
                 else:
@@ -238,25 +188,29 @@ class BinanceClient:
         # Long: set below the pullback of the trend
         # Short: set above the pullback of the trend
         # actual sell price. To be more secure, set lower than stopPrice
-        latest_closed_atr = df['atr'][len(df) - 2]
 
-        stopLimitPrice = round_step_size(
-            purchase_price - (latest_closed_atr * ATR_MULTIPLIER), tick_size)
+        lowest_of_last_10 = df.tail(11)['low'].min()
+        stopLimitPrice = round_step_size(lowest_of_last_10, tick_size)
 
         # stop signal
-        # +10% of sell price + 2 pips
+        # (ATR at lowest point) * 1 pip of sell price
+        atr_at_lowest = 1
+        for row in df.tail(11).itertuples():
+            if(row.low == lowest_of_last_10):
+                atr_at_lowest = row.atr
+                break
         stopPrice = round_step_size(
-            (stopLimitPrice + ((purchase_price - stopLimitPrice) * 10 / 100)) + (tick_size * 2), tick_size)
+            stopLimitPrice + (tick_size * atr_at_lowest), tick_size)
 
         # *** Take profit (higher than bought price) ***
         # Set 1.5x the size of the stop loss
         req_price = 0
         if side == SIDE_SELL:
             req_price = purchase_price + \
-                ((purchase_price - stopLimitPrice) * RISK_REWARD_RATIO)
+                ((purchase_price - stopLimitPrice) * self.RISK_REWARD_RATIO)
         else:
             req_price = purchase_price + \
-                ((stopLimitPrice - purchase_price) * RISK_REWARD_RATIO)
+                ((stopLimitPrice - purchase_price) * self.RISK_REWARD_RATIO)
         take_profit = round_step_size(req_price, tick_size)
 
         if os.environ.get('PLOT') == 'True':

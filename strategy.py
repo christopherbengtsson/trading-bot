@@ -57,3 +57,8 @@ def check_strategy_signal(df):
     # Check candle was opened and closed below EMA 200
     elif last_closed_price < last_closed_ema and last_opened_price < last_closed_ema:
         return SIDE_SELL
+
+# Buy when the MACD line crosses above the signal line, below the zero line if entry candle is above 200 ema
+# Stoploss at the lowest point from last 10 candles
+# Set profit target 1.5 times stoploss
+
