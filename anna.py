@@ -65,8 +65,8 @@ def for_each_crypto(bc: BinanceClient):
 
             if symbol_info and symbol_info['ocoAllowed']:
                 run_bot(bc, symbol_info)
-        else:
-            print("Anna is resting...")
+    else:
+        print("Anna is resting...")
 
 
 if __name__ == '__main__':
