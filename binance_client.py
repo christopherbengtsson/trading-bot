@@ -205,10 +205,10 @@ class BinanceClient:
         req_price = 0
         if side == SIDE_SELL:
             req_price = purchase_price + \
-                ((purchase_price - stopLimitPrice) * self.RISK_REWARD_RATIO)
+                ((purchase_price - stopPrice) * self.RISK_REWARD_RATIO)
         else:
             req_price = purchase_price + \
-                ((stopLimitPrice - purchase_price) * self.RISK_REWARD_RATIO)
+                ((stopPrice - purchase_price) * self.RISK_REWARD_RATIO)
         take_profit = round_step_size(req_price, tick_size)
 
         if os.environ.get('PLOT') == 'True':
