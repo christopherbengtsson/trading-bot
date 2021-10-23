@@ -56,9 +56,8 @@ def run_bot(bc: BinanceClient, symbol_info):
 
 
 def for_each_crypto(bc: BinanceClient):
-    is_weekday = datetime.today().weekday() < 5
 
-    if os.environ.get('RUN_ANNA') == 'True' and is_weekday:
+    if os.environ.get('RUN_ANNA') == 'True':
         pairs = json.loads(os.environ.get('CRYPTOS'))
 
         for pair in pairs:
@@ -66,9 +65,6 @@ def for_each_crypto(bc: BinanceClient):
 
             if symbol_info and symbol_info['ocoAllowed']:
                 run_bot(bc, symbol_info)
-    else:
-        if not is_weekday:
-            print("Anna doesn't work on weekends...")
         else:
             print("Anna is resting...")
 
