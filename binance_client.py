@@ -41,7 +41,7 @@ class BinanceClient:
 
         self.twm.start_user_socket(callback=handle_ws_messages)
 
-    def get_open_orders(self, symbol):
+    def get_open_orders(self, symbol=None):
         try:
             return self.client.get_open_orders(symbol=symbol)
         except BinanceAPIException as e:
