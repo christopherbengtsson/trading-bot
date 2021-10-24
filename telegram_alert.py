@@ -42,18 +42,21 @@ class Bot():
     def active_orders_command(self, update: Update, context: CallbackContext) -> None:
         message = ""
         orders = self.bc.get_open_orders()
-        i = 0
-        for order in orders:
-            i += 1
-            row_break = '\n\n' if i > 1 else ""
-            if order['type'] == ORDER_TYPE_STOP_LOSS_LIMIT:
-                message += f"""{row_break}<strong><u>{order['symbol']}</u></strong>
+        if len(orders) == 0:
+            update.message.reply_text('No active orders')
+        else:
+            i = 0
+            for order in orders:
+                i += 1
+                row_break = '\n\n' if i > 1 else ""
+                if order['type'] == ORDER_TYPE_STOP_LOSS_LIMIT:
+                    message += f"""{row_break}<strong><u>{order['symbol']}</u></strong>
 <pre>
 Trigger Price: {order['stopPrice']}
 Stoploss: {order['price']}</pre>"""
-            elif order['type'] == ORDER_TYPE_LIMIT_MAKER:
-                message += f"""{row_break}<strong><u>{order['symbol']}</u></strong>
+                elif order['type'] == ORDER_TYPE_LIMIT_MAKER:
+                    message += f"""{row_break}<strong><u>{order['symbol']}</u></strong>
 <pre>
 Target: {order['price']}</pre>"""
 
-        update.message.reply_html(message)
+            update.message.reply_html(message)
