@@ -181,11 +181,14 @@ class BinanceClient:
 
         purchase_price = sum(
             [float(f['price']) * (float(f['qty']) / market_order_qty) for f in market_order_fills])
+        print('purchase_price: ', purchase_price)
         tick_size = self.get_filter(
             filters, 'PRICE_FILTER', 'tickSize', True)
+        print('tick_size: ', tick_size)
 
         # stop signal at closest swing low
         lowest_of_last_10 = df.tail(11)['low'].min()
+        print('lowest_of_last_10: ', lowest_of_last_10)
         stopPrice = round_step_size(lowest_of_last_10 - tick_size, tick_size)
 
         # *** Stop loss ***
@@ -194,9 +197,10 @@ class BinanceClient:
         # actual sell price. To be more secure, set lower than stopPrice
         atr_at_lowest = 1
         for row in df.tail(11).itertuples():
-            if(row.low == lowest_of_last_10):
+            if(row.low == lowest_of_last_10 and row.atr > 0):
                 atr_at_lowest = row.atr
                 break
+        print('atr_at_lowest', atr_at_lowest)
         stopLimitPrice = round_step_size(
             stopPrice - (tick_size * atr_at_lowest), tick_size)
 
