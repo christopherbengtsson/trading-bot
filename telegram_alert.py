@@ -1,7 +1,9 @@
 import os
 from binance.enums import ORDER_TYPE_LIMIT_MAKER, ORDER_TYPE_STOP_LOSS_LIMIT
-from telegram import Update, ForceReply, Bot, ParseMode
+from telegram import Update, Bot, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackContext
+
+# from heroku import HerokuClient
 
 
 def send_alert(message, error=False):
@@ -18,26 +20,30 @@ def send_alert(message, error=False):
     bot.send_message(chat_id=os.environ.get(
         'TELEGRAM_CHAT_ID'), text=bot_message, parse_mode=ParseMode.HTML)
 
-# Define a few command handlers. These usually take the two arguments update and
-# context.
 
-
-class Bot():
+class AnnaTelegramBot():
     def __init__(self, bc) -> None:
-
+        # BinanceClient instance
         self.bc = bc
-        # Create the Updater and pass it your bot's token.
+        # self.hc = HerokuClient()
+
         updater = Updater(token=os.environ.get('TELEGRAM_TOKEN'))
 
-        # Get the dispatcher to register handlers
         dispatcher = updater.dispatcher
 
-        # on different commands - answer in Telegram
         dispatcher.add_handler(CommandHandler(
             "active_orders", self.active_orders_command))
 
-        # Start the Bot
         updater.start_polling()
+
+    # def start_anna(self, update: Update, context: CallbackContext):
+    #     self.hc.start_bot()
+
+    # def stop_anna(self, update: Update, context: CallbackContext):
+    #     self.hc.stop_bot()
+
+    # def set_config_vars(self, update: Update, context: CallbackContext):
+    #     pass
 
     def active_orders_command(self, update: Update, context: CallbackContext) -> None:
         message = ""
