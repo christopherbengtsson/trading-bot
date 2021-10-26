@@ -14,6 +14,7 @@ from ws_message_handler import handle_ws_messages
 
 class BinanceClient:
     def __init__(self):
+        print("Starting Binance Client...")
         testnet = os.environ.get('DEV') == 'True'
 
         self.RISK_REWARD_RATIO = float(os.environ.get('RISK_REWARD_RATIO'))
