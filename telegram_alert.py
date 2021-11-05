@@ -52,6 +52,9 @@ class AnnaTelegramBot(object):
             "stop", self.stop_command))
 
         dispatcher.add_handler(CommandHandler(
+            "restart_app", self.restart_app_command))
+
+        dispatcher.add_handler(CommandHandler(
             "get_active_orders", self.active_orders_command))
 
         dispatcher.add_handler(CommandHandler(
@@ -61,13 +64,17 @@ class AnnaTelegramBot(object):
 
         updater.start_polling()
 
-    def start(self):
+    def start_command(self):
         result = self.hc.start_bot()
         update.message.reply_html(f'<code>{result}</code>')
 
-    def stop(self):
+    def stop_command(self):
         result = self.hc.stop_bot()
         update.message.reply_html(f'<code>{result}</code>')
+
+    def restart_app_command(self):
+        result = self.hc.restart_app()
+        update.message.reply_html('Anna is restarting now')
 
     def get_crypto_pairs_command(self, update: Update, context: CallbackContext):
         pairs = self.hc.get_crypto_pairs()
