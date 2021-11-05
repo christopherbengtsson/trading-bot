@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from termcolor import cprint
 from binance_client import BinanceClient
+from heroku import HerokuClient
 import strategy as st
 import json
 from telegram_alert import AnnaTelegramBot
@@ -72,7 +73,8 @@ def for_each_crypto(bc: BinanceClient):
 
 if __name__ == '__main__':
     bc = BinanceClient()
-    AnnaTelegramBot(bc)
+    hc = HerokuClient()
+    AnnaTelegramBot(bc, hc)
 
     if os.environ.get('DEV') != 'True':
         schedule.every().hour.at("00:05").do(lambda: for_each_crypto(bc))
