@@ -41,7 +41,7 @@ class HerokuClient:
         existingCryptos = json.loads(env_vars[CRYPTOS])
         env_vars[CRYPTOS] = [*existingCryptos, value]
 
-        return self.get_confirmation_config(CRYPTOS)
+        return self.get_confirmation_config(CRYPTOS, True)
 
     def remove_crypto_pair(self, value):
         env_vars = self.get_config_vars()
@@ -49,28 +49,34 @@ class HerokuClient:
         cryptos.remove(value)
         env_vars[CRYPTOS] = cryptos
 
-        return self.get_confirmation_config(CRYPTOS)
+        return self.get_confirmation_config(CRYPTOS, True)
 
     def update_crypto_pair(self, fromValue, toValue):
         self.remove_crypto_pair(fromValue)
         self.add_crypto_pair(toValue)
 
-        return self.get_confirmation_config(CRYPTOS)
+        return self.get_confirmation_config(CRYPTOS, True)
 
     def get_crypto_pairs(self):
         env_vars = self.get_config_vars()
         return json.loads(env_vars[CRYPTOS])
 
-    def get_confirmation_config(self, key):
+    def get_confirmation_config(self, key, nested_key=False):
         env_vars = self.get_config_vars()
-        parsedConfig = json.loads(env_vars[key])
-        return f'{key}: {str(parsedConfig)}'
+
+        if(nested_key):
+            parsedConfig = json.loads(env_vars[key])
+            return f'{key}: {str(parsedConfig)}'
+
+        return f'{key}: {str(env_vars[key])}'
 
 
 # if __name__ == '__main__':
 #     # Testing Heroku Client
 #     load_dotenv()
 #     hc = HerokuClient()
+
+#     print(hc.start_bot())
 
 #     print(hc.get_crypto_pairs())
 #     hc.add_crypto_pair('ATOMUSDT')
