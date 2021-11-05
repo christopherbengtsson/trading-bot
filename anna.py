@@ -74,7 +74,7 @@ def for_each_crypto(bc: BinanceClient):
 if __name__ == '__main__':
     bc = BinanceClient()
     hc = HerokuClient()
-    AnnaTelegramBot(bc, hc)
+    AnnaTelegramBot(bc=bc, hc=hc)
 
     if os.environ.get('DEV') != 'True':
         schedule.every().hour.at("00:05").do(lambda: for_each_crypto(bc))
