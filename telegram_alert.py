@@ -4,7 +4,7 @@ import traceback
 import html
 import json
 from binance.enums import ORDER_TYPE_LIMIT_MAKER, ORDER_TYPE_STOP_LOSS_LIMIT
-from telegram import Update, Bot, ParseMode
+from telegram import Update, Bot, ParseMode, update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
 # from heroku import HerokuClient
@@ -46,7 +46,13 @@ class AnnaTelegramBot(object):
         dispatcher = updater.dispatcher
 
         dispatcher.add_handler(CommandHandler(
-            "active_orders", self.active_orders_command))
+            "start", self.start_command))
+
+        dispatcher.add_handler(CommandHandler(
+            "stop", self.stop_command))
+
+        dispatcher.add_handler(CommandHandler(
+            "get_active_orders", self.active_orders_command))
 
         dispatcher.add_handler(CommandHandler(
             "get_crypto_pairs", self.get_crypto_pairs_command))
@@ -54,6 +60,14 @@ class AnnaTelegramBot(object):
         dispatcher.add_error_handler(self.error_handler)
 
         updater.start_polling()
+
+    def start(self):
+        result = self.hc.start_bot()
+        update.message.reply_html(f'<code>{result}</code>')
+
+    def stop(self):
+        result = self.hc.stop_bot()
+        update.message.reply_html(f'<code>{result}</code>')
 
     def get_crypto_pairs_command(self, update: Update, context: CallbackContext):
         pairs = self.hc.get_crypto_pairs()
