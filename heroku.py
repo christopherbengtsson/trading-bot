@@ -59,7 +59,7 @@ class HerokuClient:
 
     def get_crypto_pairs(self):
         env_vars = self.get_config_vars()
-        return json.dumps(env_vars[CRYPTOS])
+        return json.loads(env_vars[CRYPTOS])
 
     def get_confirmation_config(self, key):
         env_vars = self.get_config_vars()
