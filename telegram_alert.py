@@ -64,15 +64,15 @@ class AnnaTelegramBot(object):
 
         updater.start_polling()
 
-    def start_command(self):
+    def start_command(self, update: Update, context: CallbackContext):
         result = self.hc.start_bot()
         update.message.reply_html(f'<code>{result}</code>')
 
-    def stop_command(self):
+    def stop_command(self, update: Update, context: CallbackContext):
         result = self.hc.stop_bot()
         update.message.reply_html(f'<code>{result}</code>')
 
-    def restart_app_command(self):
+    def restart_app_command(self, update: Update, context: CallbackContext):
         result = self.hc.restart_app()
         update.message.reply_html('Anna is restarting now')
 
