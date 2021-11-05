@@ -31,12 +31,15 @@ def send_alert(message, error=False):
         'TELEGRAM_CHAT_ID'), text=bot_message, parse_mode=ParseMode.HTML)
 
 
-class AnnaTelegramBot():
-    def __init__(self, bc) -> None:
+class AnnaTelegramBot(object):
+    def __init__(self, bc, hc) -> None:
         print("Starting Telegram Bot...")
+
         # BinanceClient instance
         self.bc = bc
-        # self.hc = HerokuClient()
+
+        # Heroku API instance
+        self.hc = hc
 
         updater = Updater(token=os.environ.get('TELEGRAM_TOKEN'))
 
@@ -45,18 +48,18 @@ class AnnaTelegramBot():
         dispatcher.add_handler(CommandHandler(
             "active_orders", self.active_orders_command))
 
+        dispatcher.add_handler(CommandHandler(
+            "get_crypto_pairs", self.get_crypto_pairs_command))
+
         dispatcher.add_error_handler(self.error_handler)
 
         updater.start_polling()
 
-    # def start_anna(self, update: Update, context: CallbackContext):
-    #     self.hc.start_bot()
+    def get_crypto_pairs_command(self, update: Update, context: CallbackContext):
+        pairs = self.hc.get_crypto_pairs()
 
-    # def stop_anna(self, update: Update, context: CallbackContext):
-    #     self.hc.stop_bot()
+        update.message.reply_html(", ".join(pairs).strip())
 
-    # def set_config_vars(self, update: Update, context: CallbackContext):
-    #     pass
     def error_handler(self, update: object, context: CallbackContext) -> None:
         # Log the error before we do anything else, so we can see it even if something breaks.
         logger.error(msg="Exception while handling an update:",
