@@ -7,3 +7,4 @@ schedule
 python-dotenv
 termcolor
 python-telegram-bot
+heroku3
